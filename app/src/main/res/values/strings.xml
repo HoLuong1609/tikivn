@@ -1,0 +1,18 @@
+<resources>
+    <string name="app_name">Tiki</string>
+
+    <string name="bottom_navigation_home">Trang chủ</string>
+    <string name="bottom_navigation_category">Danh mục</string>
+    <string name="bottom_navigation_search">Tìm kiếm</string>
+    <string name="bottom_navigation_notification">Thông báo</string>
+    <string name="bottom_navigation_my_page">Cá nhân</string>
+
+    <!-- Common -->
+    <string name="alert_positive_button">OK</string>
+    <string name="category">Danh mục</string>
+    <string name="flash_deal_title">Giá sốc hôm nay</string>
+    <string name="price_text">%s đ</string>
+    <string name="just_opened">Vừa mở bán</string>
+    <string name="sold_text">Đã bán %s</string>
+    <string name="discount_percent_text">-%d%%</string>
+</resources>

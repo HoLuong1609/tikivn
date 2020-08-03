@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+
+    <dimen name="design_bottom_nav_text_size" tools:override="true">@dimen/_8ssp</dimen>
+
+    <dimen name="banner_radius">16dp</dimen>
+    <dimen name="height_category_item">@dimen/_36sdp</dimen>
+    <dimen name="width_category_item">@dimen/_65sdp</dimen>
+    <dimen name="width_flash_deal_item">@dimen/_85sdp</dimen>
+    <dimen name="height_flash_deal_item">@dimen/_72sdp</dimen>
+</resources>

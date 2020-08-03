@@ -1,0 +1,152 @@
+apply plugin: 'com.android.application'
+apply plugin: 'kotlin-android'
+apply plugin: 'kotlin-android-extensions'
+apply plugin: 'kotlin-kapt'
+
+def loadProperties(filename) {
+    def keystorePropertiesFile = rootProject.file(filename)
+    def keystoreProperties = new Properties()
+    if (keystorePropertiesFile != null && keystorePropertiesFile.exists()) {
+        keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+        return keystoreProperties
+    }
+    return null
+}
+def secrets = loadProperties("secrets_key.properties")
+android {
+    compileSdkVersion 29
+    buildToolsVersion "29.0.3"
+
+    defaultConfig {
+        applicationId "tikivn.test"
+        minSdkVersion 21
+        targetSdkVersion 29
+        versionCode 1
+        versionName "1.0"
+
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+    def ValString = "String"
+    def ValInt = "int"
+    def SERVER_URL = "SERVER_URL"
+    def IMAGE_SERVER_URL = "IMAGE_SERVER_URL"
+    def CHAT_SERVER_IP = "CHAT_SERVER_IP"
+    def CHAT_SERVER_PORT = "CHAT_SERVER_PORT"
+    def STUN_SERVER_IP = "STUN_SERVER_IP"
+    def WEB_VIEW_VAR = "WEBVIEW_DOMAIN"
+    def ADJUST_TOKEN = "ADJUST_TOKEN"
+    flavorDimensions "release"
+    signingConfigs {
+        release {
+            keyAlias secrets['keyAlias']
+            keyPassword secrets['keyPassword']
+            storeFile rootProject.file(secrets['storeFile'])
+            storePassword secrets['storePassword']
+        }
+
+        debug {
+            keyAlias secrets['keyAlias']
+            keyPassword secrets['keyPassword']
+            storeFile rootProject.file(secrets['storeFile'])
+            storePassword secrets['storePassword']
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    buildTypes {
+        debug {
+            minifyEnabled false
+            debuggable true
+        }
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    productFlavors {
+        dev {
+            applicationId "com.tiki.test"
+            dimension "Debug"
+            buildConfigField(ValString, SERVER_URL, SERVER_URL_DEV)
+            buildConfigField(ValString, IMAGE_SERVER_URL, IMAGE_SERVER_URL_DEV)
+            buildConfigField(ValString, CHAT_SERVER_IP, CHAT_SERVER_IP_DEV)
+            buildConfigField(ValInt, CHAT_SERVER_PORT, CHAT_SERVER_PORT_DEV)
+            buildConfigField(ValString, STUN_SERVER_IP, STUN_SERVER_IP_DEV)
+            buildConfigField(ValString, WEB_VIEW_VAR, WEBVIEW_DEV)
+            buildConfigField(ValString, ADJUST_TOKEN, ADJUST_TOKEN_DEV)
+        }
+
+        starging {
+            applicationId "com.tiki.test"
+            dimension "release"
+            buildConfigField(ValString, SERVER_URL, SERVER_URL_STG)
+            buildConfigField(ValString, IMAGE_SERVER_URL, IMAGE_SERVER_URL_STG)
+            buildConfigField(ValString, CHAT_SERVER_IP, CHAT_SERVER_IP_STG)
+            buildConfigField(ValInt, CHAT_SERVER_PORT, CHAT_SERVER_PORT_STG)
+            buildConfigField(ValString, STUN_SERVER_IP, STUN_SERVER_IP_STG)
+            buildConfigField(ValString, WEB_VIEW_VAR, WEBVIEW_STG)
+            buildConfigField(ValString, ADJUST_TOKEN, ADJUST_TOKEN_STG)
+        }
+
+        honban {
+            applicationId "com.tiki.test"
+            dimension "release"
+            buildConfigField(ValString, SERVER_URL, SERVER_URL_HONBAN)
+            buildConfigField(ValString, IMAGE_SERVER_URL, IMAGE_SERVER_URL_HONBAN)
+            buildConfigField(ValString, CHAT_SERVER_IP, CHAT_SERVER_IP_HONBAN)
+            buildConfigField(ValInt, CHAT_SERVER_PORT, CHAT_SERVER_PORT_HONBAN)
+            buildConfigField(ValString, STUN_SERVER_IP, STUN_SERVER_IP_HONBAN)
+            buildConfigField(ValString, WEB_VIEW_VAR, WEBVIEW_HONBAN)
+            buildConfigField(ValString, ADJUST_TOKEN, ADJUST_TOKEN_HONBAN)
+        }
+    }
+    buildFeatures.dataBinding = true
+}
+
+dependencies {
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
+    implementation 'androidx.appcompat:appcompat:1.1.0'
+    implementation 'androidx.core:core-ktx:1.3.1'
+    implementation 'androidx.constraintlayout:constraintlayout:1.1.3'
+    testImplementation 'junit:junit:4.13'
+    androidTestImplementation 'androidx.test.ext:junit:1.1.1'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.2.0'
+    implementation 'com.android.support:multidex:1.0.3'
+
+    implementation "androidx.lifecycle:lifecycle-viewmodel:$lifecycle_version"
+    implementation "android.arch.lifecycle:extensions:$lifecycle_model_version"
+
+    //RxJava
+    implementation "io.reactivex.rxjava2:rxandroid:$rxandroid_version"
+    implementation "io.reactivex.rxjava2:rxjava:$rxanjava_version"
+    implementation "com.android.support:design:$support_design_version"
+
+    implementation "com.github.bumptech.glide:glide:${glide_version}"
+    kapt "com.github.bumptech.glide:compiler:${glide_version}"
+
+    implementation 'com.intuit.sdp:sdp-android:1.0.6'
+    implementation 'com.intuit.ssp:ssp-android:1.0.6'
+    implementation 'androidx.security:security-crypto:1.1.0-alpha01'
+
+    //Retrofit webservices
+    implementation 'com.google.code.gson:gson:2.8.6'
+    implementation "com.squareup.retrofit2:adapter-rxjava2:$retrofit_version"
+    implementation "com.squareup.retrofit2:retrofit:$retrofit_version"
+    implementation "com.squareup.retrofit2:converter-gson:$retrofit_version"
+    implementation "com.squareup.retrofit2:converter-scalars:$retrofit_version"
+    implementation "com.squareup.okhttp3:okhttp:$squareup_okhttp_version"
+    implementation "com.squareup.okhttp3:logging-interceptor:$squareup_okhttp_version"
+    implementation('com.github.ihsanbal:LoggingInterceptor:3.0.0') {
+        exclude group: 'org.json', module: 'json'
+    }
+
+    implementation 'com.asksira.android:loopingviewpager:1.3.1'
+    implementation 'com.google.android.material:material:1.3.0-alpha02'
+    implementation "androidx.swiperefreshlayout:swiperefreshlayout:1.1.0"
+}

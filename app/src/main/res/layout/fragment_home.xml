@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <data>
+
+        <variable
+            name="viewModel"
+            type="com.tikivn.presentation.viewmodel.HomeViewModel" />
+    </data>
+
+    <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+        android:id="@+id/swipeRefreshLayout"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+            <com.asksira.loopingviewpager.LoopingViewPager
+                android:id="@+id/vpBanner"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/_7sdp"
+                app:autoScroll="true"
+                app:isInfinite="true"
+                app:itemAspectRatio="3.3"
+                app:layout_constraintTop_toTopOf="parent"
+                app:listData="@{viewModel.bannerList}"
+                app:scrollInterval="3000"
+                app:viewpagerAspectRatio="3.3" />
+
+            <ProgressBar
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                app:goneUnless="@{viewModel.bannerLoading}"
+                app:layout_constraintBottom_toBottomOf="@id/vpBanner"
+                app:layout_constraintEnd_toEndOf="@id/vpBanner"
+                app:layout_constraintStart_toStartOf="@id/vpBanner"
+                app:layout_constraintTop_toTopOf="@id/vpBanner" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rvCategoryList"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/_7sdp"
+                app:layout_constraintTop_toBottomOf="@id/vpBanner"
+                app:listData="@{viewModel.categoryList}" />
+
+            <ProgressBar
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/_63sdp"
+                app:goneUnless="@{viewModel.categoryLoading}"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/vpBanner" />
+
+            <View
+                android:id="@+id/divider"
+                android:layout_width="match_parent"
+                android:layout_height="@dimen/_7sdp"
+                android:background="@color/gray"
+                app:layout_constraintTop_toBottomOf="@id/rvCategoryList" />
+
+            <androidx.appcompat.widget.AppCompatTextView
+                android:id="@+id/tvFlashDealTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:padding="@dimen/_7sdp"
+                android:text="@string/flash_deal_title"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@+id/divider" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rvFlashDeal"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:layout_constraintTop_toBottomOf="@id/tvFlashDealTitle"
+                app:listData="@{viewModel.flashDealList}" />
+
+            <ProgressBar
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/_63sdp"
+                app:goneUnless="@{viewModel.flashDealLoading}"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/tvFlashDealTitle" />
+
+            <androidx.constraintlayout.widget.Group
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                app:constraint_referenced_ids="divider, tvFlashDealTitle"
+                app:goneUnless="@{!viewModel.bannerLoading &amp;&amp; !viewModel.categoryLoading &amp;&amp; !viewModel.flashDealLoading}"/>
+        </androidx.constraintlayout.widget.ConstraintLayout>
+    </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
+</layout>
