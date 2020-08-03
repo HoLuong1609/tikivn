@@ -5,5 +5,5 @@ import com.tikivn.data.response.BaseResponse
 
 interface OnBannerResponse {
 
-    fun onBannerResponse(response: BaseResponse<List<BannerResponse>>)
+    fun onBannerResponse(response: BaseResponse<List<BannerResponse>>?)
 }

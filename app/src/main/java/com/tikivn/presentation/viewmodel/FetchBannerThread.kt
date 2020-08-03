@@ -14,10 +14,8 @@ class FetchBannerThread(private val callback: OnBannerResponse) :
     override fun run() {
         val homeRepos = HomeReposImpl.getInstance()
         val response: BaseResponse<List<BannerResponse>>? = homeRepos.getBannerList().execute().body()
-        response?.let {
-            Handler(Looper.getMainLooper()).post {
-                callback.onBannerResponse(it)
-            }
+        Handler(Looper.getMainLooper()).post {
+            callback.onBannerResponse(response)
         }
 
     }

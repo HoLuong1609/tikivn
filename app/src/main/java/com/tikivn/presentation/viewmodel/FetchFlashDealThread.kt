@@ -14,10 +14,8 @@ class FetchFlashDealThread(private val callback: OnFlashDealResponse) : HandlerT
     override fun run() {
         val homeRepos: HomeRepos = HomeReposImpl.getInstance()
         val response: BaseResponse<List<FlashDealResponse>>?  = homeRepos.getFlashDeals().execute().body()
-        response?.let {
-            Handler(Looper.getMainLooper()).post {
-                callback.onFlashDealResponse(it)
-            }
+        Handler(Looper.getMainLooper()).post {
+            callback.onFlashDealResponse(response)
         }
     }
 }

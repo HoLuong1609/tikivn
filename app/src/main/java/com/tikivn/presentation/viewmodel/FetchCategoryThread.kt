@@ -14,10 +14,8 @@ class FetchCategoryThread(private val callback: OnCategoryResponse) : HandlerThr
     override fun run() {
         val homeRepos: HomeRepos = HomeReposImpl.getInstance()
         val response: BaseResponse<List<List<CategoryResponse>>>?  = homeRepos.getQuickLinks().execute().body()
-        response?.let {
-            Handler(Looper.getMainLooper()).post {
-                callback.onCategoryResponse(it)
-            }
+        Handler(Looper.getMainLooper()).post {
+            callback.onCategoryResponse(response)
         }
     }
 }

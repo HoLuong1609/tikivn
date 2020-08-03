@@ -43,24 +43,24 @@ class HomeViewModel(application: Application, private val homeRepos: HomeRepos) 
         flashDealThread.quit()
     }
 
-    override fun onBannerResponse(response: BaseResponse<List<BannerResponse>>) {
+    override fun onBannerResponse(response: BaseResponse<List<BannerResponse>>?) {
         bannerLoading.value = false
         if (isFirstTaskComplete) {
             loadFlashDeal()
         } else {
             isFirstTaskComplete = true
         }
-        bannerList.value = response.data
+        bannerList.value = response?.data
     }
 
-    override fun onCategoryResponse(response: BaseResponse<List<List<CategoryResponse>>>) {
+    override fun onCategoryResponse(response: BaseResponse<List<List<CategoryResponse>>>?) {
         categoryLoading.value = false
         if (isFirstTaskComplete) {
             loadFlashDeal()
         } else {
             isFirstTaskComplete = true
         }
-        response.data?.let { data ->
+        response?.data?.let { data ->
             if (data.size >= 2) {
                 val list = arrayListOf<CategoryResponse>()
                 if (data[0].size <= data[1].size) {
@@ -85,9 +85,9 @@ class HomeViewModel(application: Application, private val homeRepos: HomeRepos) 
         }
     }
 
-    override fun onFlashDealResponse(response: BaseResponse<List<FlashDealResponse>>) {
+    override fun onFlashDealResponse(response: BaseResponse<List<FlashDealResponse>>?) {
         flashDealLoading.value = false
-        response.data?.let { data ->
+        response?.data?.let { data ->
             flashDealList.value = data.map { FlashDealUiModel.from(it) }
         }
     }

@@ -5,5 +5,5 @@ import com.tikivn.data.response.CategoryResponse
 
 interface OnCategoryResponse {
 
-    fun onCategoryResponse(response: BaseResponse<List<List<CategoryResponse>>>)
+    fun onCategoryResponse(response: BaseResponse<List<List<CategoryResponse>>>?)
 }

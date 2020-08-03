@@ -5,5 +5,5 @@ import com.tikivn.data.response.FlashDealResponse
 
 interface OnFlashDealResponse {
 
-    fun onFlashDealResponse(response: BaseResponse<List<FlashDealResponse>>)
+    fun onFlashDealResponse(response: BaseResponse<List<FlashDealResponse>>?)
 }
