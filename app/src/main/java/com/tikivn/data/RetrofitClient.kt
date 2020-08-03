@@ -44,7 +44,7 @@ class RetrofitClient private constructor(baseUrl: String = BASE_URL) {
             .client(client.build())
             .baseUrl(baseUrl)
             .addConverterFactory(gsonConverterFactory)
-            .addCallAdapterFactory(rxJava2CallAdapterFactory)
+//            .addCallAdapterFactory(rxJava2CallAdapterFactory)
             .build()
     }
 

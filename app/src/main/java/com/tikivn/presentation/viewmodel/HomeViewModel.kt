@@ -6,15 +6,12 @@ import com.tikivn.data.response.BannerResponse
 import com.tikivn.data.response.BaseResponse
 import com.tikivn.data.response.CategoryResponse
 import com.tikivn.data.response.FlashDealResponse
-import com.tikivn.extension.add
 import com.tikivn.presentation.base.BaseViewModel
 import com.tikivn.presentation.base.SingleLiveEvent
 import com.tikivn.presentation.uimodel.FlashDealUiModel
-import io.reactivex.android.schedulers.AndroidSchedulers
-import io.reactivex.schedulers.Schedulers
 
 class HomeViewModel(application: Application, private val homeRepos: HomeRepos) :
-    BaseViewModel(application) {
+    BaseViewModel(application), OnBannerResponse, OnCategoryResponse, OnFlashDealResponse {
 
     val bannerLoading = SingleLiveEvent<Boolean>().apply { value = false }
     val categoryLoading = SingleLiveEvent<Boolean>().apply { value = false }
@@ -22,57 +19,47 @@ class HomeViewModel(application: Application, private val homeRepos: HomeRepos) 
     val bannerList = SingleLiveEvent<List<BannerResponse>>().apply { value = listOf() }
     val categoryList = SingleLiveEvent<List<CategoryResponse>>().apply { value = listOf() }
     val flashDealList = SingleLiveEvent<List<FlashDealUiModel>>().apply { value = listOf() }
+    @Volatile
+    private var isFirstTaskComplete: Boolean = false
+    private val bannerThread = FetchBannerThread(this)
+    private val categoryThread = FetchCategoryThread( this)
+    private val flashDealThread = FetchFlashDealThread(this)
 
     fun fetchData() {
         bannerList.value = listOf()
         categoryList.value = listOf()
         flashDealList.value = listOf()
-        fetchBannerList { fetchQuickLinks { fetchFlashDeals() } }
+
+        bannerThread.start()
+        categoryThread.start()
+        bannerLoading.value = true
+        categoryLoading.value = true
     }
 
-    private fun fetchBannerList(onFinally: () -> Unit) {
-        homeRepos.getBannerList()
-            .subscribeOn(Schedulers.io())
-            .observeOn(AndroidSchedulers.mainThread())
-            .doOnSubscribe {
-                bannerLoading.value = true
-            }.doFinally {
-                bannerLoading.value = false
-                onFinally()
-            }
-            .subscribe { onBannerResponse(it) }.add(subscriptions)
+    override fun onCleared() {
+        super.onCleared()
+        bannerThread.quit()
+        categoryThread.quit()
+        flashDealThread.quit()
     }
 
-    private fun fetchQuickLinks(onFinally: () -> Unit) {
-        homeRepos.getQuickLinks()
-            .subscribeOn(Schedulers.io())
-            .observeOn(AndroidSchedulers.mainThread())
-            .doOnSubscribe {
-                categoryLoading.value = true
-            }.doFinally {
-                categoryLoading.value = false
-                onFinally()
-            }
-            .subscribe { onCategoryResponse(it) }.add(subscriptions)
-    }
-
-    private fun fetchFlashDeals() {
-        homeRepos.getFlashDeals()
-            .subscribeOn(Schedulers.io())
-            .observeOn(AndroidSchedulers.mainThread())
-            .doOnSubscribe {
-                categoryLoading.value = true
-            }.doFinally {
-                categoryLoading.value = false
-            }
-            .subscribe { onFlashDealResponse(it) }.add(subscriptions)
-    }
-
-    private fun onBannerResponse(response: BaseResponse<List<BannerResponse>>) {
+    override fun onBannerResponse(response: BaseResponse<List<BannerResponse>>) {
+        bannerLoading.value = false
+        if (isFirstTaskComplete) {
+            loadFlashDeal()
+        } else {
+            isFirstTaskComplete = true
+        }
         bannerList.value = response.data
     }
 
-    private fun onCategoryResponse(response: BaseResponse<List<List<CategoryResponse>>>) {
+    override fun onCategoryResponse(response: BaseResponse<List<List<CategoryResponse>>>) {
+        categoryLoading.value = false
+        if (isFirstTaskComplete) {
+            loadFlashDeal()
+        } else {
+            isFirstTaskComplete = true
+        }
         response.data?.let { data ->
             if (data.size >= 2) {
                 val list = arrayListOf<CategoryResponse>()
@@ -98,9 +85,14 @@ class HomeViewModel(application: Application, private val homeRepos: HomeRepos) 
         }
     }
 
-    private fun onFlashDealResponse(response: BaseResponse<List<FlashDealResponse>>) {
+    override fun onFlashDealResponse(response: BaseResponse<List<FlashDealResponse>>) {
+        flashDealLoading.value = false
         response.data?.let { data ->
             flashDealList.value = data.map { FlashDealUiModel.from(it) }
         }
+    }
+
+    private fun loadFlashDeal() {
+        flashDealThread.start()
     }
 }
