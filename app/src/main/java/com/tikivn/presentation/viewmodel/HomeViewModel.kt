@@ -9,7 +9,6 @@ import com.tikivn.data.response.FlashDealResponse
 import com.tikivn.presentation.base.BaseViewModel
 import com.tikivn.presentation.base.SingleLiveEvent
 import com.tikivn.presentation.uimodel.FlashDealUiModel
-import java.util.concurrent.*
 
 class HomeViewModel(application: Application, private val homeRepos: HomeRepos) :
     BaseViewModel(application), OnBannerResponse, OnCategoryResponse, OnFlashDealResponse {
@@ -21,6 +20,9 @@ class HomeViewModel(application: Application, private val homeRepos: HomeRepos) 
     val categoryList = SingleLiveEvent<List<CategoryResponse>>().apply { value = listOf() }
     val flashDealList = SingleLiveEvent<List<FlashDealUiModel>>().apply { value = listOf() }
 
+    private val asyncScheduler = MyAsyncScheduler(this::onFirstTaskCompleted)
+    private val flashDealThread = FetchFlashDealThread(this)
+
     fun fetchData() {
         bannerList.value = listOf()
         categoryList.value = listOf()
@@ -29,40 +31,23 @@ class HomeViewModel(application: Application, private val homeRepos: HomeRepos) 
         bannerLoading.value = true
         categoryLoading.value = true
 
-        val simpleExecutor = SimpleExecutor()
-        simpleExecutor.execute {
-            val tasks: MutableList<Callable<BaseResponse<Any>>> = mutableListOf()
-            tasks.add(BannerCallable())
-            tasks.add(CategoryCallable())
-            val executor: ExecutorService = Executors.newFixedThreadPool(2)
-            try {
-                val futures: List<Future<BaseResponse<Any>>> =
-                    executor.invokeAll(tasks)
-                mashupResult(futures)
-                tasks.clear()
-                tasks.add(FlashCallable())
-                val futures2 = executor.invokeAll(tasks)
-                onFlashDealResponse(futures2[0].get() as BaseResponse<List<FlashDealResponse>>)
-            } catch (e: InterruptedException) {
-                e.printStackTrace()
-            } catch (e: ExecutionException) {
-                e.printStackTrace()
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-            executor.shutdown()
-        }
+        asyncScheduler.addTask(BannerCallable())
+        asyncScheduler.addTask(CategoryCallable())
+        asyncScheduler.executeTasks()
     }
 
-    private fun mashupResult(futures: List<Future<BaseResponse<Any>>>) {
-        val bannerResponse = futures[0].get() as BaseResponse<List<BannerResponse>>?
-        val categoryResponse = futures[1].get() as BaseResponse<List<List<CategoryResponse>>>?
+    private fun onFirstTaskCompleted(results: List<BaseResponse<Any>>) {
+        val bannerResponse = results[0] as BaseResponse<List<BannerResponse>>?
+        val categoryResponse = results[1] as BaseResponse<List<List<CategoryResponse>>>?
         onBannerResponse(bannerResponse)
         onCategoryResponse(categoryResponse)
+        loadFlashDeal()
     }
 
     override fun onCleared() {
         super.onCleared()
+        asyncScheduler.terminate()
+        flashDealThread.quit()
     }
 
     override fun onBannerResponse(response: BaseResponse<List<BannerResponse>>?) {
@@ -104,9 +89,7 @@ class HomeViewModel(application: Application, private val homeRepos: HomeRepos) 
         }
     }
 
-    class SimpleExecutor : Executor {
-        override fun execute(runnable: Runnable) {
-            Thread(runnable).start()
-        }
+    private fun loadFlashDeal() {
+        flashDealThread.start()
     }
 }
