@@ -9,6 +9,7 @@ import com.tikivn.data.response.FlashDealResponse
 import com.tikivn.presentation.base.BaseViewModel
 import com.tikivn.presentation.base.SingleLiveEvent
 import com.tikivn.presentation.uimodel.FlashDealUiModel
+import java.util.concurrent.*
 
 class HomeViewModel(application: Application, private val homeRepos: HomeRepos) :
     BaseViewModel(application), OnBannerResponse, OnCategoryResponse, OnFlashDealResponse {
@@ -19,47 +20,58 @@ class HomeViewModel(application: Application, private val homeRepos: HomeRepos) 
     val bannerList = SingleLiveEvent<List<BannerResponse>>().apply { value = listOf() }
     val categoryList = SingleLiveEvent<List<CategoryResponse>>().apply { value = listOf() }
     val flashDealList = SingleLiveEvent<List<FlashDealUiModel>>().apply { value = listOf() }
-    @Volatile
-    private var isFirstTaskComplete: Boolean = false
-    private val bannerThread = FetchBannerThread(this)
-    private val categoryThread = FetchCategoryThread( this)
-    private val flashDealThread = FetchFlashDealThread(this)
 
     fun fetchData() {
         bannerList.value = listOf()
         categoryList.value = listOf()
         flashDealList.value = listOf()
 
-        bannerThread.start()
-        categoryThread.start()
         bannerLoading.value = true
         categoryLoading.value = true
+
+        val simpleExecutor = SimpleExecutor()
+        simpleExecutor.execute {
+            val tasks: MutableList<Callable<BaseResponse<Any>>> = mutableListOf()
+            tasks.add(BannerCallable())
+            tasks.add(CategoryCallable())
+            val executor: ExecutorService = Executors.newFixedThreadPool(2)
+            try {
+                val futures: List<Future<BaseResponse<Any>>> =
+                    executor.invokeAll(tasks)
+                mashupResult(futures)
+                tasks.clear()
+                tasks.add(FlashCallable())
+                val futures2 = executor.invokeAll(tasks)
+                onFlashDealResponse(futures2[0].get() as BaseResponse<List<FlashDealResponse>>)
+            } catch (e: InterruptedException) {
+                e.printStackTrace()
+            } catch (e: ExecutionException) {
+                e.printStackTrace()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+            executor.shutdown()
+        }
+    }
+
+    private fun mashupResult(futures: List<Future<BaseResponse<Any>>>) {
+        val bannerResponse = futures[0].get() as BaseResponse<List<BannerResponse>>?
+        val categoryResponse = futures[1].get() as BaseResponse<List<List<CategoryResponse>>>?
+        onBannerResponse(bannerResponse)
+        onCategoryResponse(categoryResponse)
     }
 
     override fun onCleared() {
         super.onCleared()
-        bannerThread.quit()
-        categoryThread.quit()
-        flashDealThread.quit()
     }
 
     override fun onBannerResponse(response: BaseResponse<List<BannerResponse>>?) {
-        bannerLoading.value = false
-        if (isFirstTaskComplete) {
-            loadFlashDeal()
-        } else {
-            isFirstTaskComplete = true
-        }
-        bannerList.value = response?.data
+        bannerLoading.postValue(false)
+        bannerList.postValue(response?.data)
     }
 
     override fun onCategoryResponse(response: BaseResponse<List<List<CategoryResponse>>>?) {
-        categoryLoading.value = false
-        if (isFirstTaskComplete) {
-            loadFlashDeal()
-        } else {
-            isFirstTaskComplete = true
-        }
+        categoryLoading.postValue(false)
         response?.data?.let { data ->
             if (data.size >= 2) {
                 val list = arrayListOf<CategoryResponse>()
@@ -80,19 +92,21 @@ class HomeViewModel(application: Application, private val homeRepos: HomeRepos) 
                         list.add(data[0][i])
                     }
                 }
-                categoryList.value = list
+                categoryList.postValue(list)
             }
         }
     }
 
     override fun onFlashDealResponse(response: BaseResponse<List<FlashDealResponse>>?) {
-        flashDealLoading.value = false
+        flashDealLoading.postValue(false)
         response?.data?.let { data ->
-            flashDealList.value = data.map { FlashDealUiModel.from(it) }
+            flashDealList.postValue(data.map { FlashDealUiModel.from(it) })
         }
     }
 
-    private fun loadFlashDeal() {
-        flashDealThread.start()
+    class SimpleExecutor : Executor {
+        override fun execute(runnable: Runnable) {
+            Thread(runnable).start()
+        }
     }
 }
