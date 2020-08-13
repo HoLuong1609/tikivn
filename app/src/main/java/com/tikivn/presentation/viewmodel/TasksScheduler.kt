@@ -31,7 +31,6 @@ class AsyncScheduler<T>(val onTasksCompletedListener: (results: List<T>) -> Unit
             } catch (e: ExecutionException) {
                 e.printStackTrace()
             }
-            executorService.shutdown()
         }
     }
 
@@ -144,7 +143,9 @@ class SerialExecutor<T>(private val onTasksCompletedListener: (results: List<T>)
     }
 
     fun terminate() {
-        mThreadPoolExecutor.shutdown()
+        if (!mThreadPoolExecutor.isShutdown) {
+            mThreadPoolExecutor.shutdown()
+        }
     }
 
     @Synchronized
