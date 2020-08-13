@@ -6,10 +6,10 @@ import android.os.Looper
 import java.util.ArrayDeque
 import java.util.concurrent.*
 
-
 const val NUMBER_OF_THREADS = 2
 
-class MyAsyncScheduler<T>(val onTasksCompletedListener: (results: List<T>) -> Unit) : MyScheduler<Callable<T>> {
+class AsyncScheduler<T>(val onTasksCompletedListener: (results: List<T>) -> Unit) :
+    Scheduler<Callable<T>> {
 
     private val tasks: MutableList<Callable<T>> = mutableListOf()
     private val executor = SimpleExecutor()
@@ -21,9 +21,15 @@ class MyAsyncScheduler<T>(val onTasksCompletedListener: (results: List<T>) -> Un
 
     override fun executeTasks() {
         executor.execute {
-            val futures: List<Future<T>> = executorService.invokeAll(tasks)
-            postToMainThread {
-                onTasksCompletedListener(futures.map { it.get() })
+            try {
+                val futures: List<Future<T>> = executorService.invokeAll(tasks)
+                postToMainThread {
+                    onTasksCompletedListener(futures.map { it.get() })
+                }
+            } catch (e: InterruptedException) {
+                e.printStackTrace()
+            } catch (e: ExecutionException) {
+                e.printStackTrace()
             }
             executorService.shutdown()
         }
@@ -39,7 +45,9 @@ class MyAsyncScheduler<T>(val onTasksCompletedListener: (results: List<T>) -> Un
     }
 
     override fun terminate() {
-        executorService.shutdown()
+        if (!executorService.isShutdown) {
+            executorService.shutdown()
+        }
         executor.terminate()
     }
 
@@ -48,12 +56,13 @@ class MyAsyncScheduler<T>(val onTasksCompletedListener: (results: List<T>) -> Un
     }
 }
 
-class MySyncScheduler(val onTasksCompletedListener: (results: List<Any>) -> Unit) : MyScheduler<Runnable> {
+class SyncScheduler<T>(private val onTasksCompletedListener: (results: List<T>) -> Unit) :
+    Scheduler<Callable<T>> {
 
-    private val tasks: MutableList<Runnable> = mutableListOf()
-    private val executor = SerialExecutor()
+    private val tasks: MutableList<Callable<T>> = mutableListOf()
+    private val executor = SerialExecutor(this::onTasksCompleted)
 
-    override fun addTask(task: Runnable) {
+    override fun addTask(task: Callable<T>) {
         tasks.add(task)
     }
 
@@ -76,12 +85,18 @@ class MySyncScheduler(val onTasksCompletedListener: (results: List<Any>) -> Unit
         executor.terminate()
     }
 
+    private fun onTasksCompleted(results: List<T>) {
+        postToMainThread {
+            onTasksCompletedListener(results)
+        }
+    }
+
     private fun isMainThread(): Boolean {
         return Looper.getMainLooper().thread === Thread.currentThread()
     }
 }
 
-interface MyScheduler<T> {
+interface Scheduler<T> {
 
     fun addTask(task: T)
 
@@ -99,23 +114,26 @@ class SimpleExecutor : Executor {
     override fun execute(runnable: Runnable) {
         mThread = Thread(runnable)
         mThread?.start()
-        mThread?.interrupt()
     }
 
     fun terminate() {
-        mThread?.interrupt()
+        if (mThread?.isAlive == true) {
+            mThread?.interrupt()
+        }
     }
 }
 
-class SerialExecutor : Executor {
+class SerialExecutor<T>(private val onTasksCompletedListener: (results: List<T>) -> Unit) {
     private val mTasks = ArrayDeque<Runnable>()
     private var mActive: Runnable? = null
+    private val results = arrayListOf<T>()
+    private val mThreadPoolExecutor = AsyncTask.THREAD_POOL_EXECUTOR as ThreadPoolExecutor
 
     @Synchronized
-    override fun execute(r: Runnable) {
+    fun execute(callable: Callable<T>) {
         mTasks.offer(Runnable {
             try {
-                r.run()
+                results.add(callable.call())
             } finally {
                 scheduleNext()
             }
@@ -126,13 +144,15 @@ class SerialExecutor : Executor {
     }
 
     fun terminate() {
-        (AsyncTask.THREAD_POOL_EXECUTOR as ThreadPoolExecutor).shutdown()
+        mThreadPoolExecutor.shutdown()
     }
 
     @Synchronized
     private fun scheduleNext() {
         if (mTasks.poll().also { mActive = it } != null) {
-            AsyncTask.THREAD_POOL_EXECUTOR.execute(mActive!!)
+            mThreadPoolExecutor.execute(mActive!!)
+        } else {
+            onTasksCompletedListener(results)
         }
     }
 }

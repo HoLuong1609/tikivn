@@ -11,7 +11,7 @@ import com.tikivn.presentation.base.SingleLiveEvent
 import com.tikivn.presentation.uimodel.FlashDealUiModel
 
 class HomeViewModel(application: Application, private val homeRepos: HomeRepos) :
-    BaseViewModel(application), OnBannerResponse, OnCategoryResponse, OnFlashDealResponse {
+    BaseViewModel(application) {
 
     val bannerLoading = SingleLiveEvent<Boolean>().apply { value = false }
     val categoryLoading = SingleLiveEvent<Boolean>().apply { value = false }
@@ -20,8 +20,17 @@ class HomeViewModel(application: Application, private val homeRepos: HomeRepos) 
     val categoryList = SingleLiveEvent<List<CategoryResponse>>().apply { value = listOf() }
     val flashDealList = SingleLiveEvent<List<FlashDealUiModel>>().apply { value = listOf() }
 
-    private val asyncScheduler = MyAsyncScheduler(this::onFirstTaskCompleted)
-    private val flashDealThread = FetchFlashDealThread(this)
+    private var asyncScheduler: AsyncScheduler<BaseResponse<Any>>
+    private var syncScheduler: SyncScheduler<BaseResponse<Any>>
+
+    init {
+        asyncScheduler = AsyncScheduler(this::onAsyncTaskCompleted)
+        asyncScheduler.addTask(BannerCallable())
+        asyncScheduler.addTask(CategoryCallable())
+
+        syncScheduler = SyncScheduler(this::onSyncTaskCompleted)
+        syncScheduler.addTask(FlashCallable())
+    }
 
     fun fetchData() {
         bannerList.value = listOf()
@@ -30,32 +39,34 @@ class HomeViewModel(application: Application, private val homeRepos: HomeRepos) 
 
         bannerLoading.value = true
         categoryLoading.value = true
-
-        asyncScheduler.addTask(BannerCallable())
-        asyncScheduler.addTask(CategoryCallable())
         asyncScheduler.executeTasks()
     }
 
-    private fun onFirstTaskCompleted(results: List<BaseResponse<Any>>) {
+    private fun onAsyncTaskCompleted(results: List<BaseResponse<Any>>) {
         val bannerResponse = results[0] as BaseResponse<List<BannerResponse>>?
         val categoryResponse = results[1] as BaseResponse<List<List<CategoryResponse>>>?
         onBannerResponse(bannerResponse)
         onCategoryResponse(categoryResponse)
-        loadFlashDeal()
+        syncScheduler.executeTasks()
+    }
+
+    private fun onSyncTaskCompleted(results: List<BaseResponse<Any>>) {
+        val flashDealResponse = results[0] as BaseResponse<List<FlashDealResponse>>?
+        onFlashDealResponse(flashDealResponse)
     }
 
     override fun onCleared() {
         super.onCleared()
         asyncScheduler.terminate()
-        flashDealThread.quit()
+        syncScheduler.terminate()
     }
 
-    override fun onBannerResponse(response: BaseResponse<List<BannerResponse>>?) {
+    private fun onBannerResponse(response: BaseResponse<List<BannerResponse>>?) {
         bannerLoading.postValue(false)
         bannerList.postValue(response?.data)
     }
 
-    override fun onCategoryResponse(response: BaseResponse<List<List<CategoryResponse>>>?) {
+    private fun onCategoryResponse(response: BaseResponse<List<List<CategoryResponse>>>?) {
         categoryLoading.postValue(false)
         response?.data?.let { data ->
             if (data.size >= 2) {
@@ -82,14 +93,10 @@ class HomeViewModel(application: Application, private val homeRepos: HomeRepos) 
         }
     }
 
-    override fun onFlashDealResponse(response: BaseResponse<List<FlashDealResponse>>?) {
+    private fun onFlashDealResponse(response: BaseResponse<List<FlashDealResponse>>?) {
         flashDealLoading.postValue(false)
         response?.data?.let { data ->
             flashDealList.postValue(data.map { FlashDealUiModel.from(it) })
         }
-    }
-
-    private fun loadFlashDeal() {
-        flashDealThread.start()
     }
 }
