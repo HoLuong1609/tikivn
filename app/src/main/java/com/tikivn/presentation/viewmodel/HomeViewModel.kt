@@ -42,7 +42,7 @@ class HomeViewModel(application: Application, private val homeRepos: HomeRepos) 
         asyncScheduler.executeTasks()
     }
 
-    private fun onAsyncTaskCompleted(results: List<BaseResponse<Any>>) {
+    private fun onAsyncTaskCompleted(results: List<BaseResponse<Any>?>) {
         val bannerResponse = results[0] as BaseResponse<List<BannerResponse>>?
         val categoryResponse = results[1] as BaseResponse<List<List<CategoryResponse>>>?
         onBannerResponse(bannerResponse)
@@ -50,7 +50,7 @@ class HomeViewModel(application: Application, private val homeRepos: HomeRepos) 
         syncScheduler.executeTasks()
     }
 
-    private fun onSyncTaskCompleted(results: List<BaseResponse<Any>>) {
+    private fun onSyncTaskCompleted(results: List<BaseResponse<Any>?>) {
         val flashDealResponse = results[0] as BaseResponse<List<FlashDealResponse>>?
         onFlashDealResponse(flashDealResponse)
     }

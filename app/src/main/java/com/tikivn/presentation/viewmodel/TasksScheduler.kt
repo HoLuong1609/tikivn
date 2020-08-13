@@ -8,21 +8,21 @@ import java.util.concurrent.*
 
 const val NUMBER_OF_THREADS = 2
 
-class AsyncScheduler<T>(val onTasksCompletedListener: (results: List<T>) -> Unit) :
-    Scheduler<Callable<T>> {
+class AsyncScheduler<T>(val onTasksCompletedListener: (results: List<T?>) -> Unit) :
+    Scheduler<Callable<T?>> {
 
-    private val tasks: MutableList<Callable<T>> = mutableListOf()
+    private val tasks: MutableList<Callable<T?>> = mutableListOf()
     private val executor = SimpleExecutor()
     private val executorService: ExecutorService = Executors.newFixedThreadPool(NUMBER_OF_THREADS)
 
-    override fun addTask(task: Callable<T>) {
+    override fun addTask(task: Callable<T?>) {
         tasks.add(task)
     }
 
     override fun executeTasks() {
         executor.execute {
             try {
-                val futures: List<Future<T>> = executorService.invokeAll(tasks)
+                val futures: List<Future<T?>> = executorService.invokeAll(tasks)
                 postToMainThread {
                     onTasksCompletedListener(futures.map { it.get() })
                 }
@@ -44,28 +44,23 @@ class AsyncScheduler<T>(val onTasksCompletedListener: (results: List<T>) -> Unit
     }
 
     override fun terminate() {
-        if (!executorService.isShutdown) {
-            executorService.shutdown()
-        }
+        executorService.shutdown()
         executor.terminate()
-    }
-
-    private fun isMainThread(): Boolean {
-        return Looper.getMainLooper().thread === Thread.currentThread()
     }
 }
 
-class SyncScheduler<T>(private val onTasksCompletedListener: (results: List<T>) -> Unit) :
-    Scheduler<Callable<T>> {
+class SyncScheduler<T>(private val onTasksCompletedListener: (results: List<T?>) -> Unit) :
+    Scheduler<Callable<T?>> {
 
-    private val tasks: MutableList<Callable<T>> = mutableListOf()
+    private val tasks: MutableList<Callable<T?>> = mutableListOf()
     private val executor = SerialExecutor(this::onTasksCompleted)
 
-    override fun addTask(task: Callable<T>) {
+    override fun addTask(task: Callable<T?>) {
         tasks.add(task)
     }
 
     override fun executeTasks() {
+        executor.reset()
         for (task in tasks) {
             executor.execute(task)
         }
@@ -84,14 +79,10 @@ class SyncScheduler<T>(private val onTasksCompletedListener: (results: List<T>) 
         executor.terminate()
     }
 
-    private fun onTasksCompleted(results: List<T>) {
+    private fun onTasksCompleted(results: List<T?>) {
         postToMainThread {
             onTasksCompletedListener(results)
         }
-    }
-
-    private fun isMainThread(): Boolean {
-        return Looper.getMainLooper().thread === Thread.currentThread()
     }
 }
 
@@ -104,6 +95,10 @@ interface Scheduler<T> {
     fun postToMainThread(task: () -> Unit)
 
     fun terminate()
+
+    fun isMainThread(): Boolean {
+        return Looper.getMainLooper().thread === Thread.currentThread()
+    }
 }
 
 class SimpleExecutor : Executor {
@@ -122,14 +117,14 @@ class SimpleExecutor : Executor {
     }
 }
 
-class SerialExecutor<T>(private val onTasksCompletedListener: (results: List<T>) -> Unit) {
+class SerialExecutor<T>(private val onTasksCompletedListener: (results: List<T?>) -> Unit) {
     private val mTasks = ArrayDeque<Runnable>()
     private var mActive: Runnable? = null
-    private val results = arrayListOf<T>()
+    private val results = arrayListOf<T?>()
     private val mThreadPoolExecutor = AsyncTask.THREAD_POOL_EXECUTOR as ThreadPoolExecutor
 
     @Synchronized
-    fun execute(callable: Callable<T>) {
+    fun execute(callable: Callable<T?>) {
         mTasks.offer(Runnable {
             try {
                 results.add(callable.call())
@@ -142,10 +137,14 @@ class SerialExecutor<T>(private val onTasksCompletedListener: (results: List<T>)
         }
     }
 
+    fun reset() {
+        mTasks.clear()
+        results.clear()
+    }
+
     fun terminate() {
-        if (!mThreadPoolExecutor.isShutdown) {
-            mThreadPoolExecutor.shutdown()
-        }
+        reset()
+        mActive?.let { mThreadPoolExecutor.remove(it) }
     }
 
     @Synchronized
